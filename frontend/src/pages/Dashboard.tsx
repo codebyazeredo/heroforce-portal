@@ -1,7 +1,7 @@
-import { useContext, useEffect, useState, useCallback } from 'react';
+import { useContext, useEffect, useState, useCallback, useMemo } from 'react';
 import { AuthContext } from '../contexts/AuthContext';
 import api from '../services/api';
-import { Filter, Plus, Pencil, Target, User as UserIcon, CheckCircle2 } from 'lucide-react';
+import { Filter, Plus, Pencil, User as UserIcon, CheckCircle2, ChevronLeft, ChevronRight } from 'lucide-react';
 import { UserRole } from '../../../backend/src/users/enums/user-role.enum';
 import { ProjectStatus, ProjectStatusLabel } from '../../../backend/src/projects/enums/project-status.enum';
 import { CreateProjectModal } from './components/CreateProjectModal';
@@ -12,6 +12,10 @@ export const Dashboard = () => {
   const [heroes, setHeroes] = useState([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [filterStatus, setFilterStatus] = useState('');
+  const [searchTerm, setSearchTerm] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 5;
+
   const isAdmin = user?.role === UserRole.ADMIN;
 
   const fetchProjects = useCallback(async () => {
@@ -37,16 +41,30 @@ export const Dashboard = () => {
     fetchHeroes();
   }, [fetchProjects, fetchHeroes]);
 
+  const filteredProjects = useMemo(() => {
+    return projects.filter((project: any) => {
+      const matchStatus = filterStatus ? project.status === filterStatus : true;
+      const matchSearch = project.name.toLowerCase().includes(searchTerm.toLowerCase());
+      return matchStatus && matchSearch;
+    });
+  }, [projects, filterStatus, searchTerm]);
+
+  const totalPages = Math.ceil(filteredProjects.length / itemsPerPage);
+  const paginatedProjects = filteredProjects.slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage
+  );
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h2 className="text-2xl font-bold text-slate-800">Gestão de Projetos</h2>
-          <p className="text-slate-500 text-sm">Monitore metas e status dos projetos ativos.</p>
+          <p className="text-slate-500 text-sm">Base de dados central das operações HeroForce.</p>
         </div>
 
         {isAdmin && (
-          <button onClick={() => setIsModalOpen(true)} className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-bold transition-all" >
+          <button onClick={() => setIsModalOpen(true)} className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-bold shadow-sm transition-all" >
             <Plus size={18} /> Novo Projeto
           </button>
         )}
@@ -59,72 +77,133 @@ export const Dashboard = () => {
         heroes={heroes}
       />
 
-      <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex flex-wrap gap-4 items-center">
-        <div className="flex items-center gap-2 text-slate-500 text-sm font-medium mr-2">
-          <Filter size={16} /> Filtrar por:
-        </div>
+      <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex flex-wrap gap-4 items-center justify-between">
+        <div className="flex flex-wrap gap-4 items-center">
+          <div className="relative">
+            <input 
+              type="text"
+              placeholder="Buscar projeto..."
+              className="bg-slate-50 border border-slate-200 text-sm rounded-lg pl-3 pr-10 py-2 outline-none focus:ring-2 focus:ring-blue-500 w-64"
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
+          </div>
 
-        <select className="bg-slate-50 border border-slate-200 text-slate-600 text-sm rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-blue-500" onChange={(e) => setFilterStatus(e.target.value)} >
-          <option value="">Todos os Status</option>
-          {Object.entries(ProjectStatusLabel).map(([value, label]) => (
-            <option key={value} value={value}>{label}</option>
-          ))}
-        </select>
+          <select 
+            className="bg-slate-50 border border-slate-200 text-slate-600 text-sm rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-blue-500" 
+            onChange={(e) => { setFilterStatus(e.target.value); setCurrentPage(1); }} 
+          >
+            <option value="">Todos os Status</option>
+            {Object.entries(ProjectStatusLabel).map(([value, label]) => (
+              <option key={value} value={value}>{label}</option>
+            ))}
+          </select>
+        </div>
+        
+        <div className="text-slate-400 text-xs font-medium">
+          Exibindo {paginatedProjects.length} de {filteredProjects.length} resultados
+        </div>
       </div>
 
-      <div className="grid grid-cols-1 gap-4">
-        {projects.length > 0 ? (
-          projects.map((project: any) => (
-            <div key={project.id} className="bg-white border border-slate-200 rounded-xl p-5 hover:shadow-md transition-shadow">
-              <div className="flex justify-between items-start">
-                <div className="space-y-1">
-                  <div className="flex items-center gap-3">
-                    <h3 className="font-bold text-lg text-slate-800">{project.name}</h3>
-                    <span className={`text-[10px] px-2 py-0.5 rounded-full font-black uppercase ${
-                      project.status === ProjectStatus.CRITICAL ? 'bg-red-100 text-red-600' : 'bg-green-100 text-green-600'
-                    }`}>
-                      {ProjectStatusLabel[project.status as keyof typeof ProjectStatusLabel]}
-                    </span>
-                  </div>
-                  <p className="text-slate-500 text-sm line-clamp-2">{project.description}</p>
-                </div>
+      <div className="bg-white border border-slate-200 rounded-xl overflow-hidden shadow-sm">
+        <div className="overflow-x-auto">
+          <table className="w-full text-left border-collapse">
+            <thead className="bg-slate-50 border-b border-slate-200">
+              <tr>
+                <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase">Projeto</th>
+                <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase">Status</th>
+                <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase">Responsável</th>
+                <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase">Metas</th>
+                {isAdmin && <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase text-center">Ações</th>}
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100">
+              {paginatedProjects.length > 0 ? (
+                paginatedProjects.map((project: any) => (
+                  <tr key={project.id} className="hover:bg-slate-50/50 transition-colors">
+                    <td className="px-6 py-4">
+                      <div className="font-bold text-slate-800">{project.name}</div>
+                      <div className="text-xs text-slate-500 line-clamp-1 max-w-[250px]">{project.description}</div>
+                    </td>
+                    <td className="px-6 py-4">
+                      <span className={`text-[10px] px-2.5 py-1 rounded-full font-black uppercase ${
+                        project.status === ProjectStatus.PLANNING ? 'bg-amber-100 text-amber-600' : 
+                        project.status === ProjectStatus.IN_PROGRESS ? 'bg-blue-100 text-blue-600' : 
+                        'bg-green-100 text-green-600'
+                      }`}>
+                        {ProjectStatusLabel[project.status as keyof typeof ProjectStatusLabel]}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4">
+                      <div className="flex items-center gap-2 text-slate-700">
+                        <div className="w-7 h-7 bg-slate-100 rounded-full flex items-center justify-center text-slate-400">
+                          <UserIcon size={14} />
+                        </div>
+                        <span className="text-sm font-medium">{project.responsible?.name}</span>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4">
+                      <div className="flex -space-x-2">
+                        {project.tasks?.slice(0, 3).map((task: any) => (
+                          <div key={task.id} title={task.description} className="w-6 h-6 rounded-full bg-white border border-slate-200 flex items-center justify-center text-green-500">
+                            <CheckCircle2 size={14} />
+                          </div>
+                        ))}
+                        {project.tasks?.length > 3 && (
+                          <div className="w-6 h-6 rounded-full bg-slate-100 border border-slate-200 flex items-center justify-center text-[10px] font-bold text-slate-500">
+                            +{project.tasks.length - 3}
+                          </div>
+                        )}
+                      </div>
+                    </td>
+                    {isAdmin && (
+                      <td className="px-6 py-4 text-center">
+                        <button className="text-slate-400 hover:text-blue-600 p-2 rounded-lg transition-colors">
+                          <Pencil size={18} />
+                        </button>
+                      </td>
+                    )}
+                  </tr>
+                ))
+              ) : (
+                <tr>
+                  <td colSpan={5} className="px-6 py-12 text-center text-slate-400">
+                    Nenhum projeto encontrado para os critérios selecionados.
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
 
-                {isAdmin && (
-                  <button className="text-slate-400 hover:text-blue-600 p-2 rounded-lg hover:bg-blue-50 transition-colors">
-                    <Pencil size={18} />
-                  </button>
-                )}
-              </div>
-
-              <div className="mt-4 space-y-2">
-                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Metas Estratégicas</p>
-                <div className="flex flex-wrap gap-2">
-                  {project.tasks?.map((task: any) => (
-                    <div key={task.id} className="flex items-center gap-1 bg-slate-50 border border-slate-200 px-2 py-1 rounded-md text-xs text-slate-600">
-                      <CheckCircle2 size={12} className="text-green-500" />
-                      {task.description}
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              <div className="mt-6 pt-4 border-t border-slate-50 flex flex-wrap items-center justify-between gap-4">
-                <div className="flex items-center gap-6">
-                  <div className="flex items-center gap-2 text-slate-600">
-                    <Target size={16} className="text-blue-500" />
-                    <span className="text-sm font-medium">{project.tasks?.length || 0} Objetivos</span>
-                  </div>
-                  <div className="flex items-center gap-2 text-slate-600">
-                    <UserIcon size={16} className="text-slate-400" />
-                    <span className="text-sm font-medium">{project.responsible?.name || 'Sem responsável'}</span>
-                  </div>
-                </div>
-              </div>
+        {totalPages > 1 && (
+          <div className="px-6 py-4 bg-slate-50 border-t border-slate-200 flex items-center justify-between">
+            <button 
+              disabled={currentPage === 1}
+              onClick={() => setCurrentPage(prev => prev - 1)}
+              className="flex items-center gap-1 text-sm font-medium text-slate-600 disabled:opacity-30"
+            >
+              <ChevronLeft size={18} /> Anterior
+            </button>
+            <div className="flex gap-2">
+              {[...Array(totalPages)].map((_, i) => (
+                <button
+                  key={i}
+                  onClick={() => setCurrentPage(i + 1)}
+                  className={`w-8 h-8 rounded-md text-sm font-bold transition-all ${
+                    currentPage === i + 1 ? 'bg-blue-600 text-white' : 'hover:bg-slate-200 text-slate-600'
+                  }`}
+                >
+                  {i + 1}
+                </button>
+              ))}
             </div>
-          ))
-        ) : (
-          <div className="bg-white border border-dashed border-slate-300 rounded-xl py-12 text-center">
-            <p className="text-slate-400">Nenhum projeto encontrado.</p>
+            <button 
+              disabled={currentPage === totalPages}
+              onClick={() => setCurrentPage(prev => prev + 1)}
+              className="flex items-center gap-1 text-sm font-medium text-slate-600 disabled:opacity-30"
+            >
+              Próximo <ChevronRight size={18} />
+            </button>
           </div>
         )}
       </div>
