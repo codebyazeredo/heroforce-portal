@@ -1,7 +1,7 @@
 import { useContext, useEffect, useState, useCallback, useMemo } from 'react';
 import { AuthContext } from '../contexts/AuthContext';
 import api from '../services/api';
-import { Filter, Plus, Pencil, User as UserIcon, CheckCircle2, ChevronLeft, ChevronRight, Search } from 'lucide-react';
+import { Filter, Plus, Pencil, User as UserIcon, CheckCircle2, ChevronLeft, ChevronRight, Search, Eye, Trash2 } from 'lucide-react';
 import { UserRole } from '../../../backend/src/users/enums/user-role.enum';
 import { ProjectStatus, ProjectStatusLabel } from '../../../backend/src/projects/enums/project-status.enum';
 import { CreateProjectModal } from './components/CreateProjectModal';
@@ -44,14 +44,14 @@ export const Dashboard = () => {
   }, [fetchProjects, fetchHeroes]);
 
   const filteredProjects = useMemo(() => {
-  return projects.filter((project: any) => {
-    const matchStatus = filterStatus !== "" ? project.status === Number(filterStatus) : true;
-    const matchSearch = project.name.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchHero = filterHero ? String(project.responsible?.id) === filterHero : true;
-    
-    return matchStatus && matchSearch && matchHero;
-  });
-}, [projects, filterStatus, searchTerm, filterHero]);
+    return projects.filter((project: any) => {
+      const matchStatus = filterStatus !== "" ? project.status === Number(filterStatus) : true;
+      const matchSearch = project.name.toLowerCase().includes(searchTerm.toLowerCase());
+      const matchHero = filterHero ? String(project.responsible?.id) === filterHero : true;
+
+      return matchStatus && matchSearch && matchHero;
+    });
+  }, [projects, filterStatus, searchTerm, filterHero]);
 
   const totalPages = Math.ceil(filteredProjects.length / itemsPerPage);
   const paginatedProjects = useMemo(() => {
@@ -60,6 +60,32 @@ export const Dashboard = () => {
       currentPage * itemsPerPage
     );
   }, [filteredProjects, currentPage]);
+
+  const handleDelete = async (id: number) => {
+    if (window.confirm("Tem certeza que deseja destruir este projeto? Esta ação é irreversível.")) {
+      try {
+        await api.delete(`/projects/${id}`);
+        fetchProjects();
+      } catch (error) {
+        alert("Erro ao excluir projeto. Verifique suas permissões.");
+      }
+    }
+  };
+
+  const [selectedProject, setSelectedProject] = useState<any>(null);
+  const [mode, setMode] = useState<'create' | 'edit' | 'view'>('create');
+
+  const handleEdit = (project: any) => {
+    setSelectedProject(project);
+    setMode('edit');
+    setIsModalOpen(true);
+  };
+
+  const handleView = (project: any) => {
+    setSelectedProject(project);
+    setMode('view');
+    setIsModalOpen(true);
+  };
 
   return (
     <div className="space-y-6">
@@ -77,17 +103,24 @@ export const Dashboard = () => {
       </div>
 
       <CreateProjectModal
+        key={selectedProject?.id || 'new'}
         isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
+        onClose={() => {
+          setIsModalOpen(false);
+          setSelectedProject(null);
+          setMode('create');
+        }}
         onSuccess={fetchProjects}
         heroes={heroes}
+        project={selectedProject}
+        mode={mode}
       />
 
       <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex flex-wrap gap-4 items-center justify-between">
         <div className="flex flex-wrap gap-3 items-center">
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
-            <input 
+            <input
               type="text"
               placeholder="Buscar projeto..."
               className="bg-slate-50 border border-slate-200 text-sm rounded-lg pl-10 pr-4 py-2 outline-none focus:ring-2 focus:ring-blue-500 w-64 transition-all"
@@ -95,10 +128,10 @@ export const Dashboard = () => {
             />
           </div>
 
-          <select 
-            className="bg-slate-50 border border-slate-200 text-slate-600 text-sm rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer" 
+          <select
+            className="bg-slate-50 border border-slate-200 text-slate-600 text-sm rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer"
             value={filterStatus}
-            onChange={(e) => { setFilterStatus(e.target.value); setCurrentPage(1); }} 
+            onChange={(e) => { setFilterStatus(e.target.value); setCurrentPage(1); }}
           >
             <option value="">Todos os Status</option>
             {Object.entries(ProjectStatusLabel).map(([value, label]) => (
@@ -106,10 +139,10 @@ export const Dashboard = () => {
             ))}
           </select>
 
-          <select 
-            className="bg-slate-50 border border-slate-200 text-slate-600 text-sm rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer" 
+          <select
+            className="bg-slate-50 border border-slate-200 text-slate-600 text-sm rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer"
             value={filterHero}
-            onChange={(e) => { setFilterHero(e.target.value); setCurrentPage(1); }} 
+            onChange={(e) => { setFilterHero(e.target.value); setCurrentPage(1); }}
           >
             <option value="">Todos os Responsáveis</option>
             {heroes.map((hero: any) => (
@@ -117,7 +150,7 @@ export const Dashboard = () => {
             ))}
           </select>
         </div>
-        
+
         <div className="text-slate-400 text-xs font-medium bg-slate-50 px-3 py-1 rounded-full border border-slate-100">
           Exibindo {paginatedProjects.length} de {filteredProjects.length} resultados
         </div>
@@ -144,11 +177,7 @@ export const Dashboard = () => {
                       <div className="text-xs text-slate-400 line-clamp-1 max-w-[250px]">{project.description}</div>
                     </td>
                     <td className="px-6 py-4">
-                      <span className={`text-[10px] px-2.5 py-1 rounded-full font-black uppercase ${
-                        project.status === 'PLANNING' ? 'bg-amber-100 text-amber-600' : 
-                        project.status === 'IN_PROGRESS' ? 'bg-blue-100 text-blue-600' : 
-                        'bg-green-100 text-green-600'
-                      }`}>
+                      <span className={`text-[10px] px-2.5 py-1 rounded-full font-black uppercase ${project.status === ProjectStatus.PLANNING ? 'bg-amber-100 text-amber-600' : project.status === ProjectStatus.IN_PROGRESS ? 'bg-blue-100 text-blue-600' : project.status === ProjectStatus.CRITICAL ? 'bg-red-100 text-red-600' : 'bg-green-100 text-green-600'}`}>
                         {ProjectStatusLabel[project.status as keyof typeof ProjectStatusLabel] || project.status}
                       </span>
                     </td>
@@ -174,13 +203,36 @@ export const Dashboard = () => {
                         )}
                       </div>
                     </td>
-                    {isAdmin && (
-                      <td className="px-6 py-4 text-center">
-                        <button className="text-slate-400 hover:text-blue-600 p-2 rounded-lg hover:bg-blue-50 transition-all">
-                          <Pencil size={18} />
+                    <td className="px-6 py-4 text-center">
+                      <div className="flex items-center justify-center gap-2">
+                        <button
+                          onClick={() => handleView(project)}
+                          className="text-slate-400 hover:text-blue-600 p-2 rounded-lg hover:bg-blue-50"
+                          title="Visualizar Detalhes"
+                        >
+                          <Eye size={18} />
                         </button>
-                      </td>
-                    )}
+
+                        {isAdmin && (
+                          <>
+                            <button
+                              onClick={() => handleEdit(project)}
+                              className="text-slate-400 hover:text-amber-600 p-2 rounded-lg hover:bg-amber-50"
+                              title="Editar Projeto"
+                            >
+                              <Pencil size={18} />
+                            </button>
+                            <button
+                              onClick={() => handleDelete(project.id)}
+                              className="text-slate-400 hover:text-red-600 p-2 rounded-lg hover:bg-red-50"
+                              title="Excluir Projeto"
+                            >
+                              <Trash2 size={18} />
+                            </button>
+                          </>
+                        )}
+                      </div>
+                    </td>
                   </tr>
                 ))
               ) : (
@@ -196,7 +248,7 @@ export const Dashboard = () => {
 
         {totalPages > 1 && (
           <div className="px-6 py-4 bg-slate-50 border-t border-slate-200 flex items-center justify-between">
-            <button 
+            <button
               disabled={currentPage === 1}
               onClick={() => setCurrentPage(prev => prev - 1)}
               className="flex items-center gap-1 text-sm font-medium text-slate-600 disabled:opacity-30 hover:text-blue-600 transition-colors"
@@ -205,22 +257,13 @@ export const Dashboard = () => {
             </button>
             <div className="flex gap-1">
               {[...Array(totalPages)].map((_, i) => (
-                <button
-                  key={i}
-                  onClick={() => setCurrentPage(i + 1)}
-                  className={`w-8 h-8 rounded-lg text-xs font-bold transition-all ${
-                    currentPage === i + 1 ? 'bg-blue-600 text-white shadow-md shadow-blue-200' : 'hover:bg-slate-200 text-slate-600'
-                  }`}
-                >
+                <button key={i} onClick={() => setCurrentPage(i + 1)}
+                  className={`w-8 h-8 rounded-lg text-xs font-bold transition-all ${currentPage === i + 1 ? 'bg-blue-600 text-white shadow-md shadow-blue-200' : 'hover:bg-slate-200 text-slate-600'}`} >
                   {i + 1}
                 </button>
               ))}
             </div>
-            <button 
-              disabled={currentPage === totalPages}
-              onClick={() => setCurrentPage(prev => prev + 1)}
-              className="flex items-center gap-1 text-sm font-medium text-slate-600 disabled:opacity-30 hover:text-blue-600 transition-colors"
-            >
+            <button disabled={currentPage === totalPages} onClick={() => setCurrentPage(prev => prev + 1)} className="flex items-center gap-1 text-sm font-medium text-slate-600 disabled:opacity-30 hover:text-blue-600 transition-colors" >
               Próximo <ChevronRight size={18} />
             </button>
           </div>
