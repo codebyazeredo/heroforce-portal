@@ -40,7 +40,6 @@ export const CreateProjectModal: React.FC<CreateProjectModalProps> = ({
     name: "tasks"
   });
 
-  // Sincroniza os dados do projeto com o formulário quando o modal abre
   useEffect(() => {
     if (isOpen) {
       if (project && (isEditMode || isViewMode)) {
@@ -152,7 +151,6 @@ export const CreateProjectModal: React.FC<CreateProjectModalProps> = ({
             />
           </div>
 
-          {/* Metas Section */}
           <div className="space-y-3">
             <div className="flex justify-between items-center border-t pt-4">
               <label className="text-xs font-bold uppercase text-slate-500">Metas Estratégicas</label>
@@ -184,7 +182,6 @@ export const CreateProjectModal: React.FC<CreateProjectModalProps> = ({
             ))}
           </div>
 
-          {/* Footer Actions */}
           <div className="pt-6 flex justify-end gap-3 border-t">
             <button 
               type="button" 
