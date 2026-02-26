@@ -4,10 +4,12 @@ const api = axios.create({
   baseURL: 'http://localhost:3000',
 });
 
-
-const token = localStorage.getItem('@HeroForce:token');
-if (token) {
-  api.defaults.headers.Authorization = `Bearer ${token}`;
-}
+api.interceptors.request.use((config) => {
+  const token = localStorage.getItem('@HeroForce:token');
+  if (token && config.headers) {
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+  return config;
+});
 
 export default api;
