@@ -14,7 +14,4 @@ export class CreateUserDto {
 
   @ApiProperty({ enum: UserCharacter, example: UserCharacter.IRONMAN })
   character: UserCharacter;
-
-  @ApiProperty({ enum: UserRole, example: UserRole.USER, required: false })
-  role: UserRole;
 }
