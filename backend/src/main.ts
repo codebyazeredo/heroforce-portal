@@ -6,9 +6,9 @@ async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
   const config = new DocumentBuilder()
-    .setTitle('HeroForce API')
-    .setDescription('Portal de Recrutamento da HeroForce')
-    .setVersion('1.0')
+    .setTitle('HeroForce Portal')
+    .setDescription('Documentação da API')
+    .setVersion('Alpha 1.0')
     .addBearerAuth()
     .build();
     
