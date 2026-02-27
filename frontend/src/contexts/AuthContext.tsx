@@ -25,14 +25,28 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const storagedUser = localStorage.getItem('@HeroForce:user');
-    const storagedToken = localStorage.getItem('@HeroForce:token');
+    async function loadStorageData() {
+      const storagedUser = localStorage.getItem('@HeroForce:user');
+      const storagedToken = localStorage.getItem('@HeroForce:token');
 
-    if (storagedUser && storagedToken) {
-      api.defaults.headers.Authorization = `Bearer ${storagedToken}`;
-      setUser(JSON.parse(storagedUser));
+      if (storagedToken && storagedUser) {
+        try {
+          api.defaults.headers.Authorization = `Bearer ${storagedToken}`;
+          await api.get('/auth/me');
+          setUser(JSON.parse(storagedUser));
+        } catch (error: any) {
+          if (error.response) {
+            signOut();
+          } else {
+            setUser(JSON.parse(storagedUser));
+          }
+        }
+      }
+
+      setLoading(false); 
     }
-    setLoading(false);
+
+    loadStorageData();
   }, []);
 
   async function signIn(credentials: object) {
