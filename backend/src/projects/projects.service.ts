@@ -1,78 +1,121 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Project } from './entities/project.entity';
 import { User } from '../users/entities/user.entity';
+import { ProjectTask } from './entities/projects-tasks.entity';
 import { CreateProjectDto } from './dto/create-project.dto';
 import { UpdateProjectDto } from './dto/update-project.dto';
 
 @Injectable()
 export class ProjectService {
-    constructor(
-        @InjectRepository(Project)
-        private readonly projectRepository: Repository<Project>,
+  constructor(
+    @InjectRepository(Project)
+    private readonly projectRepository: Repository<Project>,
 
-        @InjectRepository(User)
-        private readonly userRepository: Repository<User>,
-    ) { }
+    @InjectRepository(User)
+    private readonly userRepository: Repository<User>,
 
-    async create(createProjectDto: CreateProjectDto): Promise<Project> {
-        const { responsibleId, tasks, ...projectData } = createProjectDto;
-        const userFound = await this.userRepository.findOneBy({ id: responsibleId });
+    @InjectRepository(ProjectTask)
+    private readonly taskRepository: Repository<ProjectTask>,
+  ) {}
 
-        if (!userFound) {
-            throw new NotFoundException(`Herói com ID ${responsibleId} não encontrado no sistema.`);
-        }
-
-        const project = this.projectRepository.create({
-            ...projectData,
-            responsible: userFound,
-            tasks: tasks?.map(t => ({ description: t.description }))
-        });
-
-        return await this.projectRepository.save(project);
+  async create(dto: CreateProjectDto): Promise<Project> {
+    const { responsibleId, tasks, goals, ...projectData } = dto;
+    const user = await this.userRepository.findOneBy({ id: responsibleId });
+    
+    if (!user) {
+      throw new NotFoundException(
+        `Herói com ID ${responsibleId} não encontrado.`,
+      );
     }
 
-    async findAll(): Promise<Project[]> {
-        return await this.projectRepository.find({
-            relations: ['responsible', 'tasks'],
-            order: { id: 'DESC' }
-        });
+    this.validateGoals(goals);
+
+    const project = this.projectRepository.create({
+      ...projectData,
+      goals,
+      responsible: user,
+      tasks: tasks?.map((t) =>
+        this.taskRepository.create({ description: t.description }),
+      ),
+    });
+
+    return await this.projectRepository.save(project);
+  }
+
+  async findAll(): Promise<Project[]> {
+    return this.projectRepository.find({
+      relations: ['responsible', 'tasks'],
+      order: { id: 'DESC' },
+    });
+  }
+
+  async findOne(id: number): Promise<Project> {
+    const project = await this.projectRepository.findOne({
+      where: { id },
+      relations: ['responsible', 'tasks'],
+    });
+
+    if (!project) throw new NotFoundException('Projeto não encontrado');
+    return project;
+  }
+
+  async update(id: number, dto: UpdateProjectDto): Promise<Project> {
+    const project = await this.findOne(id);
+    const { responsibleId, tasks, goals, ...projectData } = dto;
+
+    if (responsibleId !== undefined) {
+      const responsible = await this.userRepository.findOneBy({
+        id: responsibleId,
+      });
+      if (!responsible)
+        throw new NotFoundException('Novo responsável não encontrado');
+
+      project.responsible = responsible;
     }
 
-    async findOne(id: number): Promise<Project> {
-        const project = await this.projectRepository.findOne({
-            where: { id },
-            relations: ['responsible', 'tasks'],
-        });
-
-        if (!project) throw new NotFoundException('Projeto não encontrado');
-        return project;
+    if (goals) {
+      this.validateGoals(goals);
+      project.goals = { ...project.goals, ...goals };
     }
 
-    async update(id: number, updateProjectDto: UpdateProjectDto): Promise<Project> {
-        const { responsibleId, tasks, ...projectData } = updateProjectDto;
-        const project = await this.findOne(id);
+    Object.assign(project, projectData);
 
-        if (responsibleId) {
-            const responsible = await this.userRepository.findOneBy({ id: responsibleId });
-            if (!responsible) throw new NotFoundException('Novo responsável não encontrado');
-            project.responsible = responsible;
-        }
-        Object.assign(project, projectData);
+    if (tasks) {
+      await this.taskRepository.delete({ project: { id } });
 
-        return await this.projectRepository.save(project);
+      project.tasks = tasks.map((t) =>
+        this.taskRepository.create({
+          description: t.description,
+          project,
+        }),
+      );
     }
 
-    async remove(id: number): Promise<void> {
-        const project = await this.findOne(id);
-        await this.projectRepository.remove(project);
-    }
+    return await this.projectRepository.save(project);
+  }
 
-    private calculateProgress(project: Project): number {
-        if (!project.tasks?.length) return 0;
+  async remove(id: number): Promise<void> {
+    const project = await this.findOne(id);
+    await this.projectRepository.remove(project);
+  }
 
-        const completed = project.tasks.filter(t => t.completed).length;
-        return Math.round((completed / project.tasks.length) * 100);
+  private validateGoals(goals: any) {
+    if (!goals) return;
+
+    const total =
+      goals.agility +
+      goals.enchantment +
+      goals.efficiency +
+      goals.excellence +
+      goals.transparency +
+      goals.ambition;
+
+    if (total > 100) {
+      throw new BadRequestException(
+        'Total de pontos das metas não pode ultrapassar 100',
+      );
     }
+  }
 }
