@@ -9,6 +9,9 @@ export class ProjectTask {
   @Column()
   description: string;
 
+  @Column({ default: false })
+  completed: boolean;
+  
   @ManyToOne(() => Project, (project) => project.tasks, { onDelete: 'CASCADE' })
   project: Project;
 }

@@ -68,4 +68,11 @@ export class ProjectService {
         const project = await this.findOne(id);
         await this.projectRepository.remove(project);
     }
+
+    private calculateProgress(project: Project): number {
+        if (!project.tasks?.length) return 0;
+
+        const completed = project.tasks.filter(t => t.completed).length;
+        return Math.round((completed / project.tasks.length) * 100);
+    }
 }
