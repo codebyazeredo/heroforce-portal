@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import api from '../services/api';
-import { GuestLayout } from '../layouts/GuestLayout';
-import { UserCharacter, UserCharacterLabel } from '../../../backend/src/users/enums/user-character.enum';
+import api from '../../services/api';
+import { GuestLayout } from '../../layouts/GuestLayout';
+import { UserCharacter, UserCharacterLabel } from '../../../../backend/src/users/enums/user-character.enum';
 
 export const Register = () => {
     const [formData, setFormData] = useState({ name: '', email: '', password: '', character: UserCharacter.OTHERS });

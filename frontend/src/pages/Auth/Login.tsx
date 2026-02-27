@@ -1,7 +1,7 @@
 import React, { useState, useContext } from 'react';
 import { Link } from 'react-router-dom';
-import { AuthContext } from '../contexts/AuthContext';
-import { GuestLayout } from '../layouts/GuestLayout';
+import { AuthContext } from '../../contexts/AuthContext';
+import { GuestLayout } from '../../layouts/GuestLayout';
 
 export const Login = () => {
   const [email, setEmail] = useState('');
@@ -21,7 +21,7 @@ export const Login = () => {
     <GuestLayout>
       <form onSubmit={handleSubmit} className="space-y-4">
         <div className="space-y-2">
-          <label className="text-sm font-medium text-slate-700">E-mail do Herói</label>
+          <label className="text-sm font-medium text-slate-700">E-mail</label>
           <input 
             className="w-full p-3 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none transition" 
             type="email" 
@@ -32,7 +32,7 @@ export const Login = () => {
         </div>
         
         <div className="space-y-2">
-          <label className="text-sm font-medium text-slate-700">Senha Secreta</label>
+          <label className="text-sm font-medium text-slate-700">Senha</label>
           <input 
             className="w-full p-3 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none transition" 
             type="password" 
