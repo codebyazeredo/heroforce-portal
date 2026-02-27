@@ -20,10 +20,9 @@ export class UsersController {
     return this.usersService.create(createUserDto);
   }
 
-  @UseGuards(JwtAuthGuard, RolesGuard)
+  @UseGuards(JwtAuthGuard)
   @Get()
   @ApiOperation({ summary: 'Retorna todos os usuários' })
-  @Roles(UserRole.ADMIN)
   findAll() {
     return this.usersService.findAll();
   }
