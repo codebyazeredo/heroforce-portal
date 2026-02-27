@@ -12,7 +12,6 @@ import { ProjectModule } from './projects/projects.module';
   imports: [
     ConfigModule.forRoot({
       isGlobal: true,
-      envFilePath: '../.env',
     }), 
     TypeOrmModule.forRoot({
       type: 'postgres',
@@ -22,7 +21,7 @@ import { ProjectModule } from './projects/projects.module';
       password: process.env.DB_PASSWORD,
       database: process.env.DB_DATABASE,
       autoLoadEntities: true,
-      synchronize: true,
+      synchronize: false,
     }), 
     UsersModule, 
     AuthModule,
