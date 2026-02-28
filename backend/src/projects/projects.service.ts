@@ -6,6 +6,7 @@ import { User } from '../users/entities/user.entity';
 import { ProjectTask } from './entities/projects-tasks.entity';
 import { CreateProjectDto } from './dto/create-project.dto';
 import { UpdateProjectDto } from './dto/update-project.dto';
+import { UserRole } from 'src/users/enums/user-role.enum';
 
 @Injectable()
 export class ProjectService {
@@ -18,12 +19,12 @@ export class ProjectService {
 
     @InjectRepository(ProjectTask)
     private readonly taskRepository: Repository<ProjectTask>,
-  ) {}
+  ) { }
 
   async create(dto: CreateProjectDto): Promise<Project> {
     const { responsibleId, tasks, goals, ...projectData } = dto;
     const user = await this.userRepository.findOneBy({ id: responsibleId });
-    
+
     if (!user) {
       throw new NotFoundException(
         `Herói com ID ${responsibleId} não encontrado.`,
@@ -44,20 +45,35 @@ export class ProjectService {
     return await this.projectRepository.save(project);
   }
 
-  async findAll(): Promise<Project[]> {
-    return this.projectRepository.find({
+  async findAll(currentUser: any): Promise<Project[]> {
+    const isAdmin = currentUser.role === UserRole.ADMIN;
+
+    const findOptions: any = {
       relations: ['responsible', 'tasks'],
       order: { id: 'DESC' },
-    });
+    };
+
+    if (!isAdmin) {
+      findOptions.where = {
+        responsible: { id: currentUser.id }
+      };
+    }
+
+    return this.projectRepository.find(findOptions);
   }
 
-  async findOne(id: number): Promise<Project> {
+  async findOne(id: number, currentUser?: any): Promise<Project> {
     const project = await this.projectRepository.findOne({
       where: { id },
       relations: ['responsible', 'tasks'],
     });
 
     if (!project) throw new NotFoundException('Projeto não encontrado');
+
+    if (currentUser && currentUser.role !== UserRole.ADMIN && project.responsible?.id !== currentUser.id) {
+      throw new BadRequestException('Você não tem permissão para acessar este projeto.');
+    }
+
     return project;
   }
 

@@ -41,7 +41,29 @@ export const ProjectTable = ({ projects, isAdmin, onView, onEdit, onDelete }: Pr
                 </div>
               </td>
               <td className="px-6 py-4">
-                <TaskIcons tasks={project.tasks} />
+                <td className="px-6 py-4">
+                  <div className="space-y-1.5">
+                    {(() => {
+                      const g = project.goals;
+                      const progress = g ? Math.round((g.agility + g.enchantment + g.efficiency + g.excellence + g.transparency + g.ambition) / 6) : 0;
+
+                      return (
+                        <>
+                          <div className="flex justify-between text-[10px] font-bold text-slate-500 uppercase">
+                            <span>Progresso</span>
+                            <span className="ml-1">{progress}%</span>
+                          </div>
+                          <div className="w-full bg-slate-100 rounded-full h-1.5 border border-slate-200">
+                            <div
+                              className={`h-full rounded-full transition-all duration-500 ${progress === 100 ? 'bg-green-500' : 'bg-blue-500'}`}
+                              style={{ width: `${progress}%` }}
+                            />
+                          </div>
+                        </>
+                      );
+                    })()}
+                  </div>
+                </td>
               </td>
               <td className="px-6 py-4 text-center">
                 <div className="flex items-center justify-center gap-2">

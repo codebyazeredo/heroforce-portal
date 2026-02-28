@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards, ParseIntPipe } from '@nestjs/common';
+import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards, ParseIntPipe, Request } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { CreateProjectDto } from './dto/create-project.dto';
 import { UpdateProjectDto } from './dto/update-project.dto';
@@ -14,8 +14,8 @@ import { Project } from './entities/project.entity';
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Controller('projects')
 export class ProjectController {
-  constructor(private readonly projectService: ProjectService) {}
-  
+  constructor(private readonly projectService: ProjectService) { }
+
   @Post()
   @Roles(UserRole.ADMIN)
   @ApiOperation({ summary: 'Admin cria projeto com metas' })
@@ -26,7 +26,7 @@ export class ProjectController {
   @Patch(':id')
   @Roles(UserRole.ADMIN)
   @ApiOperation({ summary: 'Atualiza um projeto existente' })
-  update(@Param('id', ParseIntPipe) id: number, @Body() dto: UpdateProjectDto, ): Promise<Project> {
+  update(@Param('id', ParseIntPipe) id: number, @Body() dto: UpdateProjectDto,): Promise<Project> {
     return this.projectService.update(id, dto);
   }
 
@@ -40,15 +40,13 @@ export class ProjectController {
 
   @Get()
   @ApiOperation({ summary: 'Lista todos os projetos' })
-  findAll(): Promise<Project[]> {
-    return this.projectService.findAll();
+  findAll(@Request() req): Promise<Project[]> {
+    return this.projectService.findAll(req.user);
   }
 
   @Get(':id')
   @ApiOperation({ summary: 'Busca um projeto por ID' })
-  findOne(
-    @Param('id', ParseIntPipe) id: number,
-  ): Promise<Project> {
-    return this.projectService.findOne(id);
+  findOne(@Param('id', ParseIntPipe) id: number, @Request() req): Promise<Project> {
+    return this.projectService.findOne(id, req.user);
   }
 }
